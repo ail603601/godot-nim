@@ -761,9 +761,8 @@ template arrayToVariant(s: untyped): Variant =
   newVariant(arr)
 
 proc toVariant*[T](s: seq[T]): Variant =
-  when (NimMajor, NimMinor, NimPatch) < (0, 20, 0):
-    if s.isNil:
-      return newVariant()
+  if s.isNil:
+    return newVariant()
   result = arrayToVariant(s)
 
 proc toVariant*[I, T](s: array[I, T]): Variant =
@@ -771,10 +770,7 @@ proc toVariant*[I, T](s: array[I, T]): Variant =
 
 proc fromVariant*[T](s: var seq[T], val: Variant): ConversionResult =
   if val.getType() == VariantType.Nil:
-    when (NimMajor, NimMinor, NimPatch) < (0, 20, 0):
-      s = nil
-    else:
-      result = ConversionResult.TypeError
+    s = nil
   elif val.getType() == VariantType.Array:
     let arr = val.asArray()
     var newS = newSeq[T](arr.len)
@@ -872,7 +868,6 @@ proc fromVariant*[T: Table or TableRef or OrderedTable or OrderedTableRef](t: va
   else:
     result = ConversionResult.TypeError
 
-when (NimMajor, NimMinor, NimPatch) < (0, 19, 0):
   {.emit: """/*TYPESECTION*/
   N_LIB_EXPORT N_CDECL(void, NimMain)(void);
   N_NOINLINE(void, setStackBottom)(void* thestackbottom);
@@ -883,6 +878,7 @@ proc getNativeLibHandle*(): pointer =
   ## Returns NativeScript library handle used to register type information
   ## in Godot.
   return nativeLibHandle
+proc NimMain() {.importc.}
 
 proc godot_nativescript_init(handle: pointer) {.
     cdecl, exportc, dynlib.} =
@@ -890,9 +886,9 @@ proc godot_nativescript_init(handle: pointer) {.
 
   var stackBottom {.volatile.}: pointer
   stackBottom = addr(stackBottom)
-  {.emit: """
-    NimMain();
-  """.}
+  
+  NimMain();
+ 
   when (NimMajor, NimMinor, NimPatch) < (0, 19, 0):
     {.emit: """
       setStackBottom((void*)(&`stackBottom`));
